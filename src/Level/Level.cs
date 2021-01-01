@@ -111,6 +111,7 @@ public class Level : Node2D
                     brick.QueueFree();
                 }
                 LowerBricks();
+                BringColumnsTogether();
                 _selectedBricks.Clear();
             }
             else
@@ -142,6 +143,33 @@ public class Level : Node2D
                 }
             }
         }
+    }
+
+    private void BringColumnsTogether()
+    {
+        var selectedColumns = _selectedBricks.GroupBy(x => x.MarginLeft).OrderByDescending(x=> x.Key).ToArray();
+        foreach(var column in selectedColumns)
+        {
+            if (IsColumnEmpty(column.Key))
+            {
+                foreach(var brick in _bricks.Where(x=> x.Key.MarginLeft > column.Key))
+                {
+                    brick.Key.MarginLeft -= _brickSize + _brickMargin;
+                    brick.Key.MarginRight-= _brickSize + _brickMargin;
+                }
+            }
+        }
+    }
+
+    private bool IsColumnEmpty(float marginLeft)
+    {
+        foreach(var brick in _bricks)
+        {
+            if (brick.Key.MarginLeft == marginLeft)
+                return false;
+        }
+
+        return true;
     }
 
     private void PressSurroundingBricksOfSameColor(Button sender)
