@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 public class Level : Node2D
@@ -18,6 +19,7 @@ public class Level : Node2D
     private Color[] _colors = new[] { Colors.Blue, Colors.Red, Colors.Green, Colors.Yellow };
 
     private Dictionary<Button, Color> _bricks = new Dictionary<Button, Color>();
+    private List<Button> _selectedBricks = new List<Button>();
 
     public override void _Ready()
     {
@@ -79,8 +81,6 @@ public class Level : Node2D
 
     private void BrickPressed(Button sender)
     {
-        GD.Print(sender, " ", sender.Pressed);
-
         if (sender.Pressed)
         {
             // new brick pressed
@@ -90,19 +90,38 @@ public class Level : Node2D
             //     https://en.wikipedia.org/wiki/Maze_generation_algorithm#Randomized_depth-first_search
 
             // 1. unpress any pressed bricks that isn't the sender
-            foreach (var brick in _bricks)
+            foreach (var brick in _selectedBricks)
             {
-                if (brick.Key.Pressed && brick.Key != sender)
-                    brick.Key.Pressed = false;
+                brick.Pressed = false;
             }
+            _selectedBricks.Clear();
 
             // 2. find surrounding bricks of same color and press
             PressSurroundingBricksOfSameColor(sender);
+        }
+        else
+        {
+            // remove selected bricks only if 2 or more are selected else just deselect
+            if(_selectedBricks.Count > 1)
+            {
+                foreach(var brick in _selectedBricks)
+                {
+                    _bricks.Remove(brick);
+                    brick.QueueFree();
+                }
+                _selectedBricks.Clear();
+            }
+            else
+            {
+                sender.Pressed = false;
+            }
         }
     }
 
     private void PressSurroundingBricksOfSameColor(Button sender)
     {
+        _selectedBricks.Add(sender);
+
         sender.Pressed = true;
         var senderColor = _bricks[sender];
 
@@ -128,12 +147,8 @@ public class Level : Node2D
         var column = (origin.MarginLeft - _gridOffsetX) / (_brickSize + _brickMargin);
         var row = (origin.MarginTop - _gridOffsetY) / (_brickSize + _brickMargin);
 
-        GD.Print($"Origin column: {column}, row: {row}, x: {origin.MarginLeft}, y: {origin.MarginTop}");
-
         var neededX = (column + direction.x) * (_brickSize + _brickMargin) + _gridOffsetX;
         var neededY = (row + direction.y) * (_brickSize + _brickMargin) + _gridOffsetY;
-
-        GD.Print($"Needed column: {column + direction.x}, row: {row + direction.y}, x: {neededX}, y: {neededY}");
 
         foreach (var brick in _bricks)
         {
