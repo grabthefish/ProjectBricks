@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 public class Level : Node2D
@@ -11,7 +12,12 @@ public class Level : Node2D
     private int _brickSize = 30;
     private int _brickMargin = 2;
 
+    private float _gridOffsetX;
+    private float _gridOffsetY;
+
     private Color[] _colors = new[] { Colors.Blue, Colors.Red, Colors.Green, Colors.Yellow };
+
+    private Dictionary<Button, Color> _bricks = new Dictionary<Button, Color>();
 
     public override void _Ready()
     {
@@ -25,10 +31,10 @@ public class Level : Node2D
         var rand = new Random();
 
         var gridWidth = (_columns * (_brickSize + _brickMargin)) - _brickMargin;
-        var xOffset = (GetViewportRect().Size.x - gridWidth) / 2;
+        _gridOffsetX = (GetViewportRect().Size.x - gridWidth) / 2;
 
         var gridHeight = (_rows * (_brickSize + _brickMargin)) - _brickMargin;
-        var yOffset = (GetViewportRect().Size.y - gridHeight) - (_brickMargin * 3);
+        _gridOffsetY = (GetViewportRect().Size.y - gridHeight) - (_brickMargin * 3);
 
         for (var c = 0; c < _columns; c++)
         {
@@ -39,8 +45,8 @@ public class Level : Node2D
                 button.ToggleMode = true;
 
                 // position button
-                var x = (c * (_brickSize + _brickMargin)) + xOffset;
-                var y = r * (_brickSize + _brickMargin) + yOffset;
+                var x = c * (_brickSize + _brickMargin) + _gridOffsetX;
+                var y = r * (_brickSize + _brickMargin) + _gridOffsetY;
 
                 button.MarginLeft = x;
                 button.MarginTop = y;
@@ -57,20 +63,86 @@ public class Level : Node2D
                 var hoverPressedStyle = new StyleBoxFlat();
                 hoverPressedStyle.BgColor = color;
                 hoverPressedStyle.ShadowColor = Colors.White;
-                hoverPressedStyle.ShadowSize = _brickMargin*2;
+                hoverPressedStyle.ShadowSize = _brickMargin * 2;
                 button.AddStyleboxOverride("pressed", hoverPressedStyle);
                 button.AddStyleboxOverride("hover", hoverPressedStyle);
+                button.AddStyleboxOverride("focus", hoverPressedStyle);
 
                 // hookup click signal
-                button.Connect("toggled", this, nameof(BrickPressed));
+                button.Connect("pressed", this, nameof(BrickPressed), new Godot.Collections.Array() { button });
 
                 _bricksWrapper.AddChild(button);
+                _bricks[button] = color;
             }
         }
     }
 
-    private void BrickPressed(bool newState)
+    private void BrickPressed(Button sender)
     {
-        GD.Print(newState);
+        GD.Print(sender, " ", sender.Pressed);
+
+        if (sender.Pressed)
+        {
+            // new brick pressed
+            // 1. unpress any pressed bricks that isn't the sender
+            // 2. find surrounding bricks of same color and press
+            //  a. use a basic maze solving algorithm adjusted to only find same colors
+            //     https://en.wikipedia.org/wiki/Maze_generation_algorithm#Randomized_depth-first_search
+
+            // 1. unpress any pressed bricks that isn't the sender
+            foreach (var brick in _bricks)
+            {
+                if (brick.Key.Pressed && brick.Key != sender)
+                    brick.Key.Pressed = false;
+            }
+
+            // 2. find surrounding bricks of same color and press
+            PressSurroundingBricksOfSameColor(sender);
+        }
+    }
+
+    private void PressSurroundingBricksOfSameColor(Button sender)
+    {
+        sender.Pressed = true;
+        var senderColor = _bricks[sender];
+
+        var buttonAbove = GetBrickRelativeTo(sender, Vector2.Up);
+        if (buttonAbove != null && !buttonAbove.Pressed && _bricks[buttonAbove] == senderColor)
+            PressSurroundingBricksOfSameColor(buttonAbove);
+
+        var buttonBelow = GetBrickRelativeTo(sender, Vector2.Down);
+        if (buttonBelow != null && !buttonBelow.Pressed && _bricks[buttonBelow] == senderColor)
+            PressSurroundingBricksOfSameColor(buttonBelow);
+
+        var buttonLeft = GetBrickRelativeTo(sender, Vector2.Left);
+        if (buttonLeft != null && !buttonLeft.Pressed && _bricks[buttonLeft] == senderColor)
+            PressSurroundingBricksOfSameColor(buttonLeft);
+
+        var buttonRight = GetBrickRelativeTo(sender, Vector2.Right);
+        if (buttonRight != null && !buttonRight.Pressed && _bricks[buttonRight] == senderColor)
+            PressSurroundingBricksOfSameColor(buttonRight);
+    }
+
+    private Button GetBrickRelativeTo(Button origin, Vector2 direction)
+    {
+        var column = (origin.MarginLeft - _gridOffsetX) / (_brickSize + _brickMargin);
+        var row = (origin.MarginTop - _gridOffsetY) / (_brickSize + _brickMargin);
+
+        GD.Print($"Origin column: {column}, row: {row}, x: {origin.MarginLeft}, y: {origin.MarginTop}");
+
+        var neededX = (column + direction.x) * (_brickSize + _brickMargin) + _gridOffsetX;
+        var neededY = (row + direction.y) * (_brickSize + _brickMargin) + _gridOffsetY;
+
+        GD.Print($"Needed column: {column + direction.x}, row: {row + direction.y}, x: {neededX}, y: {neededY}");
+
+        foreach (var brick in _bricks)
+        {
+            if (brick.Key.MarginLeft == neededX && brick.Key.MarginTop == neededY)
+            {
+                return brick.Key;
+            }
+        }
+
+        return null;
     }
 }
