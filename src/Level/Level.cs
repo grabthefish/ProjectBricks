@@ -2,6 +2,7 @@ using Godot;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 
 public class Level : Node2D
@@ -102,18 +103,43 @@ public class Level : Node2D
         else
         {
             // remove selected bricks only if 2 or more are selected else just deselect
-            if(_selectedBricks.Count > 1)
+            if (_selectedBricks.Count > 1)
             {
-                foreach(var brick in _selectedBricks)
+                foreach (var brick in _selectedBricks)
                 {
                     _bricks.Remove(brick);
                     brick.QueueFree();
                 }
+                LowerBricks();
                 _selectedBricks.Clear();
             }
             else
             {
                 sender.Pressed = false;
+            }
+        }
+    }
+
+    private void LowerBricks()
+    {
+        var selectedColumns = _selectedBricks.GroupBy(x => x.MarginLeft);
+
+        foreach (var column in selectedColumns)
+        {
+            var selectedColumnBricks = column.OrderBy(x => x.MarginTop).ToArray();
+
+            foreach (var brick in selectedColumnBricks)
+            {
+                var above = GetBrickRelativeTo(brick, Vector2.Up);
+                while (above != null)
+                {
+                    var next = GetBrickRelativeTo(above, Vector2.Up);
+
+                    above.MarginTop += _brickSize + _brickMargin;
+                    above.MarginBottom += _brickSize + _brickMargin;
+
+                    above = next;
+                }
             }
         }
     }
