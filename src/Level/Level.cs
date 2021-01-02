@@ -1,9 +1,7 @@
 using Godot;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Threading.Tasks;
 
 public class Level : Node2D
 {
@@ -113,6 +111,8 @@ public class Level : Node2D
                 LowerBricks();
                 BringColumnsTogether();
                 _selectedBricks.Clear();
+
+                var temp = IsGameOver();
             }
             else
             {
@@ -159,6 +159,35 @@ public class Level : Node2D
                 }
             }
         }
+    }
+
+    private bool IsGameOver()
+    {
+        // loop over the remaining bricks
+        // if brick has a neighbour with same color -> not game over
+
+        foreach(var brick in _bricks)
+        {
+            var senderColor = brick.Value;
+
+            var buttonAbove = GetBrickRelativeTo(brick.Key, Vector2.Up);
+            if (buttonAbove != null && _bricks[buttonAbove] == senderColor)
+                return false;
+
+            var buttonBelow = GetBrickRelativeTo(brick.Key, Vector2.Down);
+            if (buttonBelow != null && _bricks[buttonBelow] == senderColor)
+                return false;
+
+            var buttonLeft = GetBrickRelativeTo(brick.Key, Vector2.Left);
+            if (buttonLeft != null && _bricks[buttonLeft] == senderColor)
+                return false;
+
+            var buttonRight = GetBrickRelativeTo(brick.Key, Vector2.Right);
+            if (buttonRight != null && _bricks[buttonRight] == senderColor)
+                return false;
+        }
+
+        return true;
     }
 
     private bool IsColumnEmpty(float marginLeft)
