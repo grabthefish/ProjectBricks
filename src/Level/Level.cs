@@ -6,7 +6,8 @@ using System.Linq;
 public class Level : Node2D
 {
     private Node2D _bricksWrapper;
-
+    private Button _againButton;
+    private PopupPanel _gameOverPopup;
     private int _columns = 25;
     private int _rows = 15;
     private int _brickSize = 30;
@@ -23,7 +24,17 @@ public class Level : Node2D
     public override void _Ready()
     {
         _bricksWrapper = GetNode<Node2D>("Bricks");
+        _againButton = GetNode<Button>("GameOverPopup/CenterContainer/VBoxContainer/AgainButton");
+        _gameOverPopup = GetNode<PopupPanel>("GameOverPopup");
 
+        _againButton.Connect("pressed", this, nameof(AgainButtonPressed));
+
+        Setup();
+    }
+
+    private void AgainButtonPressed()
+    {
+        _gameOverPopup.Hide();
         Setup();
     }
 
@@ -112,7 +123,10 @@ public class Level : Node2D
                 BringColumnsTogether();
                 _selectedBricks.Clear();
 
-                var temp = IsGameOver();
+                if (_bricks.Count == 0 || !AreMovesLeft())
+                {
+                    _gameOverPopup.PopupCentered();
+                }
             }
             else
             {
@@ -161,7 +175,7 @@ public class Level : Node2D
         }
     }
 
-    private bool IsGameOver()
+    private bool AreMovesLeft()
     {
         // loop over the remaining bricks
         // if brick has a neighbour with same color -> not game over
@@ -172,22 +186,22 @@ public class Level : Node2D
 
             var buttonAbove = GetBrickRelativeTo(brick.Key, Vector2.Up);
             if (buttonAbove != null && _bricks[buttonAbove] == senderColor)
-                return false;
+                return true;
 
             var buttonBelow = GetBrickRelativeTo(brick.Key, Vector2.Down);
             if (buttonBelow != null && _bricks[buttonBelow] == senderColor)
-                return false;
+                return true;
 
             var buttonLeft = GetBrickRelativeTo(brick.Key, Vector2.Left);
             if (buttonLeft != null && _bricks[buttonLeft] == senderColor)
-                return false;
+                return true;
 
             var buttonRight = GetBrickRelativeTo(brick.Key, Vector2.Right);
             if (buttonRight != null && _bricks[buttonRight] == senderColor)
-                return false;
+                return true;
         }
 
-        return true;
+        return false;
     }
 
     private bool IsColumnEmpty(float marginLeft)
