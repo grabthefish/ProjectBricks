@@ -47,3 +47,7 @@ margin_top = 18.0
 margin_right = 70.0
 margin_bottom = 38.0
 text = "Again"
+
+[node name="Camera" type="Camera2D" parent="."]
+position = Vector2( 512, 300 )
+current = true

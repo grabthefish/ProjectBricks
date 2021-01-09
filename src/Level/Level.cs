@@ -8,6 +8,8 @@ public class Level : Node2D
     private Node2D _bricksWrapper;
     private Button _againButton;
     private PopupPanel _gameOverPopup;
+    private Camera2D _camera;
+
     private int _columns = 25;
     private int _rows = 15;
     private int _brickSize = 30;
@@ -21,17 +23,42 @@ public class Level : Node2D
     private Dictionary<Button, Color> _bricks = new Dictionary<Button, Color>();
     private List<Button> _selectedBricks = new List<Button>();
 
+    private Vector2 _zoomStep = new Vector2(0.1f, 0.1f);
+    private Vector2 _initialCameraPosition = Vector2.Zero;
+
     public override void _Ready()
     {
         _bricksWrapper = GetNode<Node2D>("Bricks");
         _againButton = GetNode<Button>("GameOverPopup/CenterContainer/VBoxContainer/AgainButton");
         _gameOverPopup = GetNode<PopupPanel>("GameOverPopup");
+        _camera = GetNode<Camera2D>("Camera");
 
         _againButton.Connect("pressed", this, nameof(AgainButtonPressed));
+
+        _initialCameraPosition = _camera.Position;
 
         Setup();
     }
 
+    public override void _Input(InputEvent @event)
+    {
+        if (!_gameOverPopup.Visible)
+        {
+            if (Input.IsActionJustPressed("zoom_in"))
+            {
+                _camera.Zoom -= _zoomStep;
+            }
+            else if (Input.IsActionJustPressed("zoom_out"))
+            {
+                _camera.Zoom += _zoomStep;
+            }
+
+            if (@event is InputEventMouseMotion emm && Input.IsActionPressed("mouse_press"))
+            {
+                _camera.Position -= emm.Relative;
+            }
+        }
+    }
     private void AgainButtonPressed()
     {
         _gameOverPopup.Hide();
@@ -125,6 +152,8 @@ public class Level : Node2D
 
                 if (_bricks.Count == 0 || !AreMovesLeft())
                 {
+                    _camera.Zoom = Vector2.One;
+                    _camera.Position = _initialCameraPosition;
                     _gameOverPopup.PopupCentered();
                 }
             }
@@ -161,15 +190,15 @@ public class Level : Node2D
 
     private void BringColumnsTogether()
     {
-        var selectedColumns = _selectedBricks.GroupBy(x => x.MarginLeft).OrderByDescending(x=> x.Key).ToArray();
-        foreach(var column in selectedColumns)
+        var selectedColumns = _selectedBricks.GroupBy(x => x.MarginLeft).OrderByDescending(x => x.Key).ToArray();
+        foreach (var column in selectedColumns)
         {
             if (IsColumnEmpty(column.Key))
             {
-                foreach(var brick in _bricks.Where(x=> x.Key.MarginLeft > column.Key))
+                foreach (var brick in _bricks.Where(x => x.Key.MarginLeft > column.Key))
                 {
                     brick.Key.MarginLeft -= _brickSize + _brickMargin;
-                    brick.Key.MarginRight-= _brickSize + _brickMargin;
+                    brick.Key.MarginRight -= _brickSize + _brickMargin;
                 }
             }
         }
@@ -180,7 +209,7 @@ public class Level : Node2D
         // loop over the remaining bricks
         // if brick has a neighbour with same color -> not game over
 
-        foreach(var brick in _bricks)
+        foreach (var brick in _bricks)
         {
             var senderColor = brick.Value;
 
@@ -206,7 +235,7 @@ public class Level : Node2D
 
     private bool IsColumnEmpty(float marginLeft)
     {
-        foreach(var brick in _bricks)
+        foreach (var brick in _bricks)
         {
             if (brick.Key.MarginLeft == marginLeft)
                 return false;
