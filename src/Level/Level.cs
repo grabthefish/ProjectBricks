@@ -47,6 +47,11 @@ public class Level : Node2D
             if (Input.IsActionJustPressed("zoom_in"))
             {
                 _camera.Zoom -= _zoomStep;
+
+                if (_camera.Zoom.x < 0.1)
+                {
+                    _camera.Zoom = new Vector2(0.1f,0.1f);
+                }
             }
             else if (Input.IsActionJustPressed("zoom_out"))
             {
